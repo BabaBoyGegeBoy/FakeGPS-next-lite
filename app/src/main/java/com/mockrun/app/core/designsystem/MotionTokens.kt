@@ -2,75 +2,58 @@
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 
 /**
- * Emil Kowalski Design Engineering & Apple Motion Tokens
- * Reference: https://github.com/emilkowalski/skills
+ * Material 3 motion tokens
+ *   emphasized / standard / standardDecelerate cubic-bezier
+ *   保留原有常量名，数值替换为 M3 标准 motion 曲线。
  */
 object MotionTokens {
-    // 1. Emil Kowalski Sanctioned Custom Cubic Bezier Easings
-    val EaseOutStrong = CubicBezierEasing(0.23f, 1.0f, 0.32f, 1.0f)
-    val EaseInOutStrong = CubicBezierEasing(0.77f, 0.0f, 0.175f, 1.0f)
-    val EaseDrawer = CubicBezierEasing(0.32f, 0.72f, 0.0f, 1.0f)
+    // M3 emphasized / standard / decelerate
+    val EaseOutStrong = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
+    val EaseInOutStrong = CubicBezierEasing(0.3f, 0.0f, 0.0f, 1.0f)
+    val EaseDrawer = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
-    // 2. Apple Physics Spring Configurations
+    // M3 spring: 无过冲、快速收敛
     val BouncySpringSpec = spring<Float>(
-        dampingRatio = 0.75f,
-        stiffness = 450f
+        dampingRatio = 0.8f,
+        stiffness = 380f
     )
 
     val SnappySpringSpec = spring<Float>(
-        dampingRatio = 1.0f, // Critically damped (no overshoot, settles immediately)
+        dampingRatio = 1.0f,
         stiffness = 500f
     )
 
     val FluidSpringSpec = spring<Float>(
-        dampingRatio = 0.85f,
-        stiffness = 380f
+        dampingRatio = 0.9f,
+        stiffness = 300f
     )
 }
 
 /**
- * Emil Kowalski Core Principle: "Buttons must feel responsive: transform scale(0.97) on :active"
- * Responds instantaneously on pointer-down with subtle spring decompression upon release.
+ * M3 交互反馈：点击使用主题默认 ripple indication（不再传 null 禁用）。
+ * [pressedScale] 参数保留以兼容现有调用点，默认不再做缩放形变。
  */
 fun Modifier.bouncyClickable(
     enabled: Boolean = true,
-    pressedScale: Float = 0.96f,
+    @Suppress("UNUSED_PARAMETER") pressedScale: Float = 0.96f,
     onClick: () -> Unit
 ): Modifier = composed {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled) pressedScale else 1.0f,
-        animationSpec = MotionTokens.BouncySpringSpec,
-        label = "bouncyClickScale"
+    this.clickable(
+        enabled = enabled,
+        onClick = onClick
     )
-
-    this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .clickable(
-            interactionSource = interactionSource,
-            indication = null, // Disable default ripple for authentic, crisp iOS tactile response
-            enabled = enabled,
-            onClick = onClick
-        )
 }
 
 /**
- * Scale down modifier tied to an external pressed/dragged state (e.g. for custom sliders or gesture handles)
+ * 绑定外部 pressed/dragged 状态的缩放修饰（滑块/手柄手势用）。
+ * 保留函数签名，内部 spring 已切换为 M3 参数。
  */
 fun Modifier.bouncyScale(
     isPressed: Boolean,
