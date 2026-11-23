@@ -63,8 +63,6 @@ class FloatingJoystickService : Service() {
     // Joystick size state (freely adjustable: 80dp to 240dp)
     private var currentJoystickSizeDp: Int = 130
     private var joystickViewRef: JoystickView? = null
-    private var sizeSeekBarRef: SeekBar? = null
-    private var sizeValueTextRef: TextView? = null
 
     // Joystick movement state
     private var currentAngleDeg: Float = 0f
@@ -171,9 +169,6 @@ class FloatingJoystickService : Service() {
         joystickViewRef?.layoutParams = LinearLayout.LayoutParams(newPx, newPx)
         joystickViewRef?.requestLayout()
         rootView?.let { windowManager?.updateViewLayout(it, it.layoutParams) }
-
-        sizeValueTextRef?.text = "$currentJoystickSizeDp dp"
-        sizeSeekBarRef?.progress = currentJoystickSizeDp - 80
 
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
@@ -396,150 +391,13 @@ class FloatingJoystickService : Service() {
         }
         optionsCard.addView(speedSeekBar)
 
-        // Speed Preset Icons (🚶 🏃 🚴 🚗 ✈️)
-        val iconRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = 6
-            }
-        }
-        val presets = listOf("🚶" to 1.2f, "🏃" to 2.5f, "🚴" to 6.0f, "🚗" to 15.0f, "✈️" to 50.0f)
-        presets.forEach { (icon, spd) ->
-            val btn = TextView(this).apply {
-                text = icon
-                textSize = 18f
-                gravity = Gravity.CENTER
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#F2F2F7"))
-                    cornerRadius = 16f
-                }
-                setPadding(6, 6, 6, 6)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = 3
-                    marginEnd = 3
-                }
-                setOnClickListener {
-                    currentSpeedMps = spd
-                    speedSeekBar.progress = ((spd - 0.5f) / 0.5f).toInt()
-                    speedValueText.text = "%.1f m/s".format(spd)
-                }
-            }
-            iconRow.addView(btn)
-        }
-        optionsCard.addView(iconRow)
+        // 速度预设已外放到摇盘下方常驻区（三档 2 / 8 / 15 m/s），展开面板仅保留连续滑块。
         addDivider()
 
-        // 3. 摇杆大小调节 (80dp ~ 220dp)
-        val sizeValueText = TextView(this).apply {
-            text = "$currentJoystickSizeDp dp"
-            textSize = 13f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(Color.parseColor("#007AFF"))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#EBF3FF"))
-                cornerRadius = 14f
-            }
-            setPadding(16, 6, 16, 6)
-        }
-        sizeValueTextRef = sizeValueText
-
-        val sizeRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            val label = TextView(context).apply {
-                text = "摇杆尺寸"
-                textSize = 14f
-                setTextColor(Color.parseColor("#1C1C1E"))
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            addView(label)
-            addView(sizeValueText)
-        }
-        optionsCard.addView(sizeRow)
-
-        val sizeSeekBar = SeekBar(this).apply {
-            max = 140 // 80dp to 220dp
-            progress = currentJoystickSizeDp - 80
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar?, prog: Int, fromUser: Boolean) {
-                    if (fromUser) {
-                        updateJoystickSize(prog + 80)
-                    }
-                }
-                override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) {}
-            })
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = 8
-            }
-        }
-        sizeSeekBarRef = sizeSeekBar
-        optionsCard.addView(sizeSeekBar)
-
-        // 摇杆大小快捷预设胶囊 (小 90 / 中 130 / 大 170 / 特大 210)
-        val sizePresetsRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = 6
-            }
-        }
-        val sizePresets = listOf("小 90" to 90, "中 130" to 130, "大 170" to 170, "特大 210" to 210)
-        sizePresets.forEach { (label, sz) ->
-            val btn = TextView(this).apply {
-                text = label
-                textSize = 11f
-                gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#3A3A3C"))
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#F2F2F7"))
-                    cornerRadius = 14f
-                    setStroke(1, Color.parseColor("#E5E5EA"))
-                }
-                setPadding(12, 6, 12, 6)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = 3
-                    marginEnd = 3
-                }
-                setOnClickListener {
-                    updateJoystickSize(sz)
-                }
-            }
-            sizePresetsRow.addView(btn)
-        }
-        optionsCard.addView(sizePresetsRow)
+        // 摇杆尺寸已移至「功能」页，锁定开关已外放为常驻图标按钮；展开面板只保留连续滑块。
         addDivider()
 
-        // 4. 摇杆锁定
-        val lockRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            val label = TextView(context).apply {
-                text = "八方向锁定"
-                textSize = 14f
-                setTextColor(Color.parseColor("#1C1C1E"))
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            val lockSwitch = Switch(context).apply {
-                isChecked = false
-                setOnCheckedChangeListener { _, checked ->
-                    isLocked = checked
-                    joystickView.isLocked = checked
-                    if (!checked) {
-                        joystickView.resetKnob()
-                        currentPower = 0f
-                    }
-                }
-            }
-            addView(label)
-            addView(lockSwitch)
-        }
-        optionsCard.addView(lockRow)
-
-        // 5. 步频模拟 (严格仅在有 ROOT 环境下展示)
+        // 4. 步频模拟 (严格仅在有 ROOT 环境下展示)
         if (isRootDevice) {
             addDivider()
             val stepRow = LinearLayout(this).apply {
@@ -606,6 +464,83 @@ class FloatingJoystickService : Service() {
         optionsCard.addView(bottomRow)
 
         container.addView(optionsCard)
+
+        // ==========================================
+        // 常驻快捷区：三档速度 + 锁定开关（无需展开即可操作）
+        // 插入到摇盘(索引0)与控制按钮之间，用 addView(view, 1)
+        // ==========================================
+        val density = resources.displayMetrics.density
+        val quickBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (4 * density).toInt()
+            }
+        }
+
+        // 三档速度：2 / 8 / 15 m/s
+        val speedPresets = listOf(
+            "🚶 2" to 2.0f,
+            "🏃 8" to 8.0f,
+            "🚗 15" to 15.0f
+        )
+        speedPresets.forEach { (label, spd) ->
+            val btn = TextView(this).apply {
+                text = label
+                textSize = 11f
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#3A3A3C"))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#FFFFFF"))
+                    cornerRadius = 14f
+                    setStroke((1 * density).toInt(), Color.parseColor("#D7D7DB"))
+                }
+                setPadding((10 * density).toInt(), (5 * density).toInt(), (10 * density).toInt(), (5 * density).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginStart = (3 * density).toInt() }
+                setOnClickListener {
+                    currentSpeedMps = spd
+                    speedSeekBar.progress = ((spd - 0.5f) / 0.5f).toInt()
+                    speedValueText.text = "%.1f m/s".format(spd)
+                }
+            }
+            quickBar.addView(btn)
+        }
+
+        // 锁定开关：双状态带图标按钮（🔓 未锁定 / 🔒 已锁定）
+        val lockBtn = TextView(this).apply {
+            text = "🔓 未锁定"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#3A3A3C"))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#FFFFFF"))
+                cornerRadius = 14f
+                setStroke((1 * density).toInt(), Color.parseColor("#D7D7DB"))
+            }
+            setPadding((10 * density).toInt(), (5 * density).toInt(), (10 * density).toInt(), (5 * density).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = (6 * density).toInt() }
+            setOnClickListener {
+                val checked = !isLocked
+                isLocked = checked
+                joystickView.isLocked = checked
+                text = if (checked) "🔒 已锁定" else "🔓 未锁定"
+                if (!checked) {
+                    joystickView.resetKnob()
+                    currentPower = 0f
+                }
+            }
+        }
+        quickBar.addView(lockBtn)
+        container.addView(quickBar, 1)
 
         pillBtn.setOnClickListener {
             isSecondLevelExpanded = !isSecondLevelExpanded
