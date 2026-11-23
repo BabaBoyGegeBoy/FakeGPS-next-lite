@@ -426,14 +426,15 @@ fun IosSwitch(
     val scheme = MaterialTheme.colorScheme
     val offTrack = scheme.surfaceContainerHighest
     val onTrack = scheme.primary
+    val colorSpring = spring<Color>(dampingRatio = 1.0f, stiffness = 500f)
     val trackColor by animateColorAsState(
         targetValue = if (checked) onTrack else offTrack,
-        animationSpec = MotionTokens.SnappySpringSpec,
+        animationSpec = colorSpring,
         label = "m3SwitchTrack"
     )
     val thumbColor by animateColorAsState(
         targetValue = if (checked) scheme.onPrimary else scheme.outline,
-        animationSpec = MotionTokens.SnappySpringSpec,
+        animationSpec = colorSpring,
         label = "m3SwitchThumb"
     )
 
@@ -448,10 +449,7 @@ fun IosSwitch(
             .size(width = 52.dp, height = 32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(trackColor)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                enabled = enabled
-            ) { onCheckedChange(!checked) }
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(2.dp),
         contentAlignment = Alignment.CenterStart
     ) {
