@@ -6,7 +6,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Place
@@ -21,9 +20,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mockrun.app.ui.components.AndroidFloatingBottomBar
-import com.mockrun.app.ui.components.AppUpdateDialog
 import com.mockrun.app.ui.components.FloatingTabItem
-import com.mockrun.app.feature.settings.AboutScreen
 import com.mockrun.app.feature.mock.LocationMockScreen
 import com.mockrun.app.feature.map.MapScreen
 import com.mockrun.app.feature.map.MapTab
@@ -35,8 +32,6 @@ import com.mockrun.app.core.designsystem.LocalLiquidGlassEnabled
 import com.mockrun.app.core.designsystem.hazeSource
 import com.mockrun.app.ui.viewmodel.MapViewModel
 import com.mockrun.app.ui.viewmodel.SimulationViewModel
-import com.mockrun.app.core.data.repository.VersionSyncManager
-import com.mockrun.app.core.data.repository.VersionSyncStatus
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -45,7 +40,6 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Location : Screen("location", "定位", Icons.Default.Place)
     object Route : Screen("route", "路线", Icons.Default.Navigation)
     object Features : Screen("features", "功能", Icons.Default.Build)
-    object About : Screen("about", "关于", Icons.Default.Info)
     object Library : Screen("library", "路线库", Icons.Default.Menu)
 
     // Backward-compatibility aliases
@@ -75,27 +69,22 @@ fun AppNavigation(
     // 全局模糊源：整个内容区（含地图页 Aurora 雾面层）会被捕获，供底部玻璃 Tab 栏采样。
     // 地图页的原生 MapView 无法被 Haze 捕获，但地图页内已铺一层 Compose 绘制的
     // Aurora 雾面，因此这里录到的内容非空，底栏能拿到真实模糊而不是空图层。
-    val chromeHaze = remember { dev.chrisbanes.haze.HazeState() }
+    val chromeHaze = remember { com.mockrun.app.core.designsystem.HazeState() }
 
     val navigationTabs = remember {
         listOf(
             FloatingTabItem(Screen.Location.route, Screen.Location.title, Screen.Location.icon),
             FloatingTabItem(Screen.Route.route, Screen.Route.title, Screen.Route.icon),
-            FloatingTabItem(Screen.Features.route, Screen.Features.title, Screen.Features.icon),
-            FloatingTabItem(Screen.About.route, Screen.About.title, Screen.About.icon)
+            FloatingTabItem(Screen.Features.route, Screen.Features.title, Screen.Features.icon)
         )
     }
 
-    // Unified interactive tab position: 0.0f .. 3.0f
+    // Unified interactive tab position: 0.0f .. 2.0f
     val tabPosition = remember { Animatable(0f) }
     var showLibrarySubScreen by remember { mutableStateOf(false) }
 
-    val updateStatus by VersionSyncManager.status
-    val showUpdatePrompt by VersionSyncManager.showUpdatePrompt
-
     LaunchedEffect(Unit) {
         BackgroundThemeManager.initialize(context)
-        VersionSyncManager.checkForUpdates(force = false)
     }
 
     // Android back handler
@@ -160,7 +149,7 @@ fun AppNavigation(
 
                 // Page 1: LocationMockScreen (Tab 2: 功能)
                 val featuresOffsetFraction = 2.0f - tabPosition.value
-                if (tabPosition.value in 0.95f..3.05f) {
+                if (tabPosition.value in 0.95f..2.05f) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -179,24 +168,6 @@ fun AppNavigation(
                     }
                 }
 
-                // Page 2: AboutScreen (Tab 3: 关于)
-                val aboutOffsetFraction = 3.0f - tabPosition.value
-                if (tabPosition.value > 1.95f) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .offset {
-                                IntOffset((aboutOffsetFraction * widthPx).roundToInt(), 0)
-                            }
-                    ) {
-                        AboutScreen(
-                            isLiquidGlass = isLiquidGlassEnabled,
-                            isTablet = isTablet,
-                            onToggleLiquidGlass = { isLiquidGlassEnabled = it },
-                            onNavigateToLibrary = { showLibrarySubScreen = true }
-                        )
-                    }
-                }
             }
 
             // Sub-screen overlay: Route Library
@@ -255,26 +226,6 @@ fun AppNavigation(
                 }
             }
 
-            // In-app Update Prompt Dialog
-            //
-            // 必须先取一次快照再判定 —— updateStatus 是 `by` 委托的 State，
-            // 由 VersionSyncManager.checkForUpdates() 在 IO 协程上写入。
-            // 直接写 `if (updateStatus is HasUpdate) { ... updateStatus as HasUpdate }`
-            // 是两次独立读取：判定通过后、强转之前若状态被改写（例如用户点了
-            // 「检查更新」触发新一轮 checkForUpdates，状态回到 Checking），
-            // 强转即抛 ClassCastException，崩在导航层的组合期 —— 整个界面挂掉。
-            //
-            // 这个问题一直存在，只是原先走 GitHub API，国内超时后状态停在
-            // Error 分支，很难命中；改为自有服务器后响应从 10 秒降到毫秒级，
-            // Idle -> Checking -> HasUpdate 快速连续翻转，才稳定触发。
-            val statusSnapshot = updateStatus
-            if (showUpdatePrompt && statusSnapshot is VersionSyncStatus.HasUpdate) {
-                AppUpdateDialog(
-                    info = statusSnapshot.info,
-                    isLiquidGlass = isLiquidGlassEnabled,
-                    onDismiss = { VersionSyncManager.dismissUpdatePrompt() }
-                )
-            }
         }
     }
 }

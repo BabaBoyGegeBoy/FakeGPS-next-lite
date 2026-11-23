@@ -143,9 +143,6 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
-    // Chris Banes Haze (Glassmorphism / Frosted Glass)
-    implementation(libs.haze)
-
     // LSPosed / Xposed API (compileOnly, never pack into dex)
     compileOnly("de.robv.android.xposed:api:82")
 
