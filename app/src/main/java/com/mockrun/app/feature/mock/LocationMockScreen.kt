@@ -283,7 +283,7 @@ fun LocationMockScreen(
 
     // 本页专属模糊源：AppBackground 铺底当源层，卡片玻璃采样它 ——
     // 两者是同一个 Box 下的兄弟节点，不会自引用。
-    val pageHaze = remember { dev.chrisbanes.haze.HazeState() }
+    val pageHaze = remember { com.mockrun.app.core.designsystem.HazeState() }
 
     Box(
         modifier = Modifier.fillMaxSize(),

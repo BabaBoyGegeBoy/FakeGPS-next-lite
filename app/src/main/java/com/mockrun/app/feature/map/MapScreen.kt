@@ -675,7 +675,7 @@ fun MapScreen(
     // 地图页专属 Haze 模糊源：原生 MapView 无法被 Haze 捕获，
     // 因此叠加一层 Compose 绘制的中性雾面（单色铺底 + 上下厚中间薄的竖直渐变）作为源层，
     // 让定位页/路线页所有卡片获得与功能页/关于页一致的真实毛玻璃。
-    val pageHaze = remember { dev.chrisbanes.haze.HazeState() }
+    val pageHaze = remember { com.mockrun.app.core.designsystem.HazeState() }
     val isDark = LocalIosColors.current.isDark
 
     Box(
@@ -1126,7 +1126,7 @@ fun MapScreen(
                                     expanded = showMapTypeMenu,
                                     onDismissRequest = { showMapTypeMenu = false }
                                 ) {
-                                    MapSourceType.values().forEach { type ->
+                                    MapSourceType.values().filter { it != MapSourceType.OPEN_STREET_MAP }.forEach { type ->
                                         DropdownMenuItem(
                                             text = {
                                                 Text(

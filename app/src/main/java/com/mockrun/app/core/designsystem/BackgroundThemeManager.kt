@@ -129,7 +129,7 @@ object BackgroundThemeManager {
 @Composable
 fun AppBackground(
     modifier: Modifier = Modifier,
-    hazeState: dev.chrisbanes.haze.HazeState? = null
+    hazeState: HazeState? = null
 ) {
     val context = LocalContext.current
     val isDark = LocalIosColors.current.isDark

@@ -204,7 +204,7 @@ fun IosInsetGroupCard(
     isLiquidGlass: Boolean = LocalLiquidGlassEnabled.current,
     shape: Shape = AppShapes.card,
     elevation: Dp = 10.dp,
-    hazeState: dev.chrisbanes.haze.HazeState? = null,
+    hazeState: HazeState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(

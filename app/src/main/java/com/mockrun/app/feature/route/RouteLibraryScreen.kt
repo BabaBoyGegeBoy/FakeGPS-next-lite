@@ -154,7 +154,7 @@ fun RouteLibraryScreen(
     // 本页专属模糊源：本页是「叠加层」，若只继承 AppNavigation 的全局源，
     // 会采样到身后内容区的地图（而本页自己有铺底背景），观感是错的。
     // 所以自建一个源，由本页 AppBackground 当源层，卡片玻璃采样它。
-    val pageHaze = remember { dev.chrisbanes.haze.HazeState() }
+    val pageHaze = remember { com.mockrun.app.core.designsystem.HazeState() }
 
     Box(
         modifier = Modifier.fillMaxSize(),
