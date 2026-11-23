@@ -1,11 +1,26 @@
 package com.mockrun.app.core.location
 
+import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.mockrun.app.util.Diag
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** 单个配置项的执行结果，用于一键配置后的逐项回显。 */
+data class SetupStepResult(
+    val id: String,
+    val label: String,
+    val success: Boolean,
+    val detail: String = ""
+)
+
+/** 一键配置整套的汇总结果。 */
+data class SetupReport(val steps: List<SetupStepResult>) {
+    val successCount: Int get() = steps.count { it.success }
+    val failureCount: Int get() = steps.count { !it.success }
+}
 
 @Singleton
 class RootSuBridge @Inject constructor() {
@@ -107,6 +122,59 @@ class RootSuBridge @Inject constructor() {
 
     suspend fun restoreScanningHardware(): Boolean {
         return executeCommand("settings put secure location_mode 3 && settings put global wifi_scan_always_enabled 1 && settings put global ble_scan_always_enabled 1 && settings put global assisted_gps_enabled 1")
+    }
+
+    /**
+     * Root 模式下的一整套静默配置。
+     *
+     * 只做 Root 能稳定静默完成、且不会破坏正常联网的项目：
+     * 定位运行时权限、mock_location app-op、开发者选项开关、高精度定位与扫描、
+     * 通知权限、悬浮窗权限、电池优化白名单。
+     *
+     * 刻意不包含：LSPosed 启用 / scope / 重启、OEM 自启动、多任务卡加锁、
+     * 关闭 Wi-Fi/BLE 射频（disableWifiBluetoothScan 会影响正常联网）。
+     * 这些项由 UI 统一列为「需手动」或单独引导。
+     */
+    suspend fun applyFullSetup(packageName: String): SetupReport {
+        val steps = mutableListOf<SetupStepResult>()
+
+        suspend fun runStep(id: String, label: String, block: suspend () -> Boolean) {
+            val ok = runCatching { block() }.getOrDefault(false)
+            steps += SetupStepResult(
+                id = id,
+                label = label,
+                success = ok,
+                detail = if (ok) "已配置" else "配置失败，请检查 Root 授权或 ROM 限制"
+            )
+        }
+
+        runStep("mock_location", "模拟位置授权与开发者选项") {
+            grantMockLocation(packageName)
+        }
+        runStep("location_mode", "高精度定位与辅助扫描") {
+            restoreScanningHardware()
+        }
+        runStep("location_permission", "精确定位权限") {
+            val fine = executeCommand("pm grant $packageName android.permission.ACCESS_FINE_LOCATION")
+            val coarse = executeCommand("pm grant $packageName android.permission.ACCESS_COARSE_LOCATION")
+            fine || coarse
+        }
+        runStep("activity_recognition", "运动识别权限") {
+            executeCommand("pm grant $packageName android.permission.ACTIVITY_RECOGNITION")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            runStep("notification", "通知权限") {
+                executeCommand("pm grant $packageName android.permission.POST_NOTIFICATIONS")
+            }
+        }
+        runStep("overlay", "悬浮窗权限") {
+            executeCommand("appops set $packageName SYSTEM_ALERT_WINDOW allow")
+        }
+        runStep("battery", "电池优化白名单") {
+            executeCommand("cmd deviceidle whitelist +$packageName")
+        }
+
+        return SetupReport(steps)
     }
 
     /**
