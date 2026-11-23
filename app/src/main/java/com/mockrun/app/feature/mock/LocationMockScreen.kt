@@ -47,6 +47,7 @@ import com.mockrun.app.core.location.CoordinateConverter
 import com.mockrun.app.core.location.FloatingJoystickService
 import com.mockrun.app.core.location.KeepAliveHelper
 import com.mockrun.app.core.location.RootSuBridge
+import com.mockrun.app.core.location.SetupReport
 import com.mockrun.app.ui.components.PermissionGuideDialog
 import com.mockrun.app.util.Diag
 import com.mockrun.app.util.InjectionMode
@@ -278,6 +279,7 @@ fun LocationMockScreen(
 
     var showHelpSheet by remember { mutableStateOf(false) }
     var showWeChatGuideSheet by remember { mutableStateOf(false) }
+    var setupReport by remember { mutableStateOf<SetupReport?>(null) }
 
     val isLiquidGlass = LocalLiquidGlassEnabled.current
 
@@ -1111,11 +1113,16 @@ fun LocationMockScreen(
             )
         }
 
-        // Root One-Click Anti-Flashback Optimization
+        // Root One-Click Full Setup：把原先分散的 Root 配置收敛为一个入口。
+        // 单项状态行仍保留点击能力，用于精确定位问题；这里只负责批量静默配置。
         IosInsetGroupCard(hazeState = pageHaze) {
             IosListRow(
-                title = "恢复系统高精度定位",
-                subtitle = if (isRootMode && isRootAvailable) "配置模拟权限与 Wi-Fi/蓝牙辅助定位" else "免 Root 模式：可在系统设置中管理扫描与模拟位置",
+                title = "一键配置整套",
+                subtitle = if (isRootMode && isRootAvailable) {
+                    "批量配置定位权限、模拟位置、通知、悬浮窗与电池优化；其余项给出待手动清单"
+                } else {
+                    "需要 Root 权限；免 Root 模式请逐项手动配置"
+                },
                 icon = Icons.Default.Build,
                 iconBackground = if (isRootMode && isRootAvailable) IosColors.SystemGreen else IosColors.SystemBlue,
                 trailingText = if (isRootMode && isRootAvailable) "立即配置" else "使用指南",
@@ -1123,12 +1130,16 @@ fun LocationMockScreen(
                 onClick = {
                     if (isRootMode && isRootAvailable) {
                         coroutineScope.launch {
-                            rootBridge.restoreScanningHardware()
-                            rootBridge.grantMockLocation(context.packageName)
-                            Toast.makeText(context, "已配置模拟权限与高精度模式", Toast.LENGTH_SHORT).show()
+                            val report = rootBridge.applyFullSetup(context.packageName)
+                            isDevMockLocationEnabled = XposedStatusHelper.isMockLocationAppSelected(context)
+                            areNotificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && powerManager != null) {
+                                isBatteryIgnoring = powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                            }
+                            isLsposedHookActive = XposedStatusHelper.isLsposedHookReallyActive(context)
+                            setupReport = report
                         }
                     } else {
-                        Toast.makeText(context, "免 Root 模式下可通过系统设置优化", Toast.LENGTH_SHORT).show()
                         showHelpSheet = true
                     }
                 }
@@ -1147,6 +1158,27 @@ fun LocationMockScreen(
 
     if (showHelpSheet) {
         UsageGuideDialog(onDismissRequest = { showHelpSheet = false })
+    }
+
+    setupReport?.let { report ->
+        SetupResultDialog(
+            report = report,
+            lsposedReady = isLsposedHookActive,
+            onOpenLsposed = {
+                val intent = context.packageManager.getLaunchIntentForPackage("org.lsposed.manager")
+                if (intent != null) {
+                    context.startActivity(intent)
+                } else {
+                    Toast.makeText(context, "未检测到 LSPosed 管理器", Toast.LENGTH_LONG).show()
+                }
+                setupReport = null
+            },
+            onOpenAutoStart = {
+                KeepAliveHelper.openAutoStartSettings(context)
+                setupReport = null
+            },
+            onDismiss = { setupReport = null }
+        )
     }
 
     if (showWeChatGuideSheet) {
@@ -1305,4 +1337,97 @@ fun LocationMockScreen(
             }
         )
     }
+}
+
+/** 一键配置结果：成功/失败逐项回显，并明确列出仍必须手动完成的项。 */
+@Composable
+private fun SetupResultDialog(
+    report: SetupReport,
+    lsposedReady: Boolean,
+    onOpenLsposed: () -> Unit,
+    onOpenAutoStart: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "一键配置结果",
+                style = IosTypography.Headline,
+                color = IosColors.Label
+            )
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "Root 静默配置：成功 ${report.successCount} 项，失败 ${report.failureCount} 项",
+                    style = IosTypography.Body,
+                    color = IosColors.Label
+                )
+                Spacer(Modifier.height(12.dp))
+                report.steps.forEach { step ->
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text(
+                            text = if (step.success) "✓" else "✗",
+                            style = IosTypography.Body,
+                            color = if (step.success) IosColors.SystemGreen else IosColors.SystemRed,
+                            modifier = Modifier.width(20.dp)
+                        )
+                        Column {
+                            Text(
+                                text = step.label,
+                                style = IosTypography.Body,
+                                color = IosColors.Label
+                            )
+                            Text(
+                                text = step.detail,
+                                style = IosTypography.Footnote,
+                                color = IosColors.SecondaryLabel
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "仍需手动",
+                    style = IosTypography.Body,
+                    color = IosColors.Label,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "• LSPosed 启用模块并勾选系统框架、系统定位服务与目标应用" +
+                        "（${if (lsposedReady) "当前已就绪" else "当前未就绪"}）",
+                    style = IosTypography.Footnote,
+                    color = IosColors.SecondaryLabel
+                )
+                Text(
+                    text = "• scope 变更后需重启或强制停止相关进程",
+                    style = IosTypography.Footnote,
+                    color = IosColors.SecondaryLabel
+                )
+                Text(
+                    text = "• OEM 自启动白名单与多任务卡加锁",
+                    style = IosTypography.Footnote,
+                    color = IosColors.SecondaryLabel
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("完成", color = IosColors.SystemBlue)
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onOpenAutoStart) {
+                    Text("自启动", color = IosColors.SecondaryLabel)
+                }
+                TextButton(onClick = onOpenLsposed) {
+                    Text("LSPosed", color = IosColors.SecondaryLabel)
+                }
+            }
+        }
+    )
 }
