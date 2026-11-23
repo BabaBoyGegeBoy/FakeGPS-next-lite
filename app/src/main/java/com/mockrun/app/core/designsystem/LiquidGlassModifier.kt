@@ -10,9 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -66,7 +64,7 @@ fun Modifier.hazeSource(state: HazeState?): Modifier = this
 
 /** Solid inset card surface. */
 fun Modifier.iosCardSurface(
-    shape: Shape = RoundedCornerShape(24.dp)
+    shape: Shape = RoundedCornerShape(16.dp)
 ): Modifier = composed {
     this
         .clip(shape)
@@ -83,8 +81,8 @@ fun Modifier.iosCardSurface(
  */
 fun Modifier.liquidGlass(
     isLiquidGlass: Boolean,
-    shape: Shape = RoundedCornerShape(24.dp),
-    elevation: Dp = 12.dp,
+    shape: Shape = RoundedCornerShape(16.dp),
+    elevation: Dp = 4.dp,
     containerColor: Color? = null,
     borderWidth: Dp = 1.0.dp,
     hazeState: HazeState? = null,
@@ -123,15 +121,6 @@ fun Modifier.liquidGlass(
         .clip(shape)
         .background(fill, shape)
         .border(borderWidth, borderColor, shape)
-        .drawBehind {
-            val stroke = (if (isDark) 1.dp else 1.25.dp).toPx()
-            drawLine(
-                color = palette.glassHighlight,
-                start = Offset(stroke * 6f, stroke / 2f),
-                end = Offset(size.width - stroke * 6f, stroke / 2f),
-                strokeWidth = stroke
-            )
-        }
 }
 
 /**
