@@ -412,7 +412,8 @@ fun IosListRow(
 // =============================================================================
 
 /**
- * Apple UISwitch（51×31dp，弹簧物理）
+ * Material 3 Switch（52×32dp，M3 track/thumb 配色，无弹簧过冲）。
+ * 保留原函数名与参数签名，useBrandColor 兼容旧调用点。
  */
 @Composable
 fun IosSwitch(
@@ -420,30 +421,35 @@ fun IosSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    useBrandColor: Boolean = false
+    @Suppress("UNUSED_PARAMETER") useBrandColor: Boolean = false
 ) {
-    val offTrackColor = Color(0x24FFFFFF)
-    val onColor = if (useBrandColor) IosColors.SystemBlue else IosColors.SystemGreen
+    val scheme = MaterialTheme.colorScheme
+    val offTrack = scheme.surfaceContainerHighest
+    val onTrack = scheme.primary
     val trackColor by animateColorAsState(
-        targetValue = if (checked) onColor else offTrackColor,
-        animationSpec = spring(),
-        label = "iosSwitchTrack"
+        targetValue = if (checked) onTrack else offTrack,
+        animationSpec = MotionTokens.SnappySpringSpec,
+        label = "m3SwitchTrack"
+    )
+    val thumbColor by animateColorAsState(
+        targetValue = if (checked) scheme.onPrimary else scheme.outline,
+        animationSpec = MotionTokens.SnappySpringSpec,
+        label = "m3SwitchThumb"
     )
 
     val thumbOffset by animateFloatAsState(
         targetValue = if (checked) 20f else 0f,
-        animationSpec = MotionTokens.BouncySpringSpec,
-        label = "iosSwitchThumb"
+        animationSpec = MotionTokens.SnappySpringSpec,
+        label = "m3SwitchThumbOffset"
     )
 
     Box(
         modifier = modifier
-            .size(width = 51.dp, height = 31.dp)
+            .size(width = 52.dp, height = 32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(trackColor)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
                 enabled = enabled
             ) { onCheckedChange(!checked) }
             .padding(2.dp),
@@ -452,16 +458,16 @@ fun IosSwitch(
         Box(
             modifier = Modifier
                 .offset(x = thumbOffset.dp)
-                .size(27.dp)
-                .shadow(elevation = 2.dp, shape = CircleShape)
+                .size(28.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(thumbColor)
         )
     }
 }
 
 /**
- * Apple HIG 分段控件
+ * Material 3 SegmentedButton（40dp，M3 容器配色与描边）。
+ * 保留原函数名与泛型签名。
  */
 @Composable
 fun <T> IosSegmentedControl(
@@ -472,39 +478,40 @@ fun <T> IosSegmentedControl(
     labelProvider: (T) -> String = { it.toString() }
 ) {
     val selectedIndex = items.indexOf(selectedItem).coerceAtLeast(0)
-    val activePillColor = IosColors.Surface3
+    val scheme = MaterialTheme.colorScheme
 
-    Surface(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(34.dp),
-        shape = RoundedCornerShape(9.dp),
-        color = IosColors.TertiarySystemFill
+            .height(40.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, scheme.outline, RoundedCornerShape(8.dp)),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items.forEachIndexed { index, item ->
-                val isSelected = index == selectedIndex
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(if (isSelected) activePillColor else Color.Transparent)
-                        .bouncyClickable { onItemSelected(item) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = labelProvider(item),
-                        style = IosTypography.Caption1,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) IosColors.Label else IosColors.SecondaryLabel
+        items.forEachIndexed { index, item ->
+            val isSelected = index == selectedIndex
+            val segmentColor = if (isSelected) scheme.secondaryContainer else Color.Transparent
+            val contentColor = if (isSelected) scheme.onSecondaryContainer else scheme.onSurfaceVariant
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(segmentColor)
+                    .then(
+                        if (index > 0) Modifier.border(
+                            width = 1.dp,
+                            color = scheme.outline,
+                            shape = RoundedCornerShape(0.dp)
+                        ) else Modifier
                     )
-                }
+                    .bouncyClickable { onItemSelected(item) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = labelProvider(item),
+                    style = IosTypography.Caption1,
+                    color = contentColor
+                )
             }
         }
     }
@@ -536,10 +543,10 @@ fun IosPrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = IosColors.SystemBlue,
-    contentColor: Color = Color.White,
+    containerColor: Color = Color.Unspecified,
+    contentColor: Color = Color.Unspecified,
     icon: ImageVector? = null,
-    height: Dp = 52.dp,
+    height: Dp = 40.dp,
     enabled: Boolean = true,
     loading: Boolean = false,
     loadingText: String? = null
@@ -548,8 +555,12 @@ fun IosPrimaryButton(
     val clickable = enabled && !loading
     val label = if (loading) (loadingText ?: text) else text
 
-    val resolvedContainer = if (clickable) containerColor else containerColor.copy(alpha = 0.40f)
-    val resolvedContent = if (clickable) contentColor else contentColor.copy(alpha = 0.72f)
+    val scheme = MaterialTheme.colorScheme
+    val baseContainer = if (containerColor != Color.Unspecified) containerColor else scheme.primary
+    val baseContent = if (contentColor != Color.Unspecified) contentColor else scheme.onPrimary
+
+    val resolvedContainer = if (clickable) baseContainer else baseContainer.copy(alpha = 0.40f)
+    val resolvedContent = if (clickable) baseContent else baseContent.copy(alpha = 0.72f)
 
     Surface(
         modifier = modifier
@@ -558,8 +569,7 @@ fun IosPrimaryButton(
             .clip(AppShapes.button)
             .bouncyClickable(enabled = clickable, onClick = onClick),
         shape = AppShapes.button,
-        color = resolvedContainer,
-        shadowElevation = if (clickable) 8.dp else 0.dp
+        color = resolvedContainer
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -597,15 +607,16 @@ fun IosGhostButton(
     icon: ImageVector? = null,
     iconTint: Color = Color.Unspecified,
     contentColor: Color = Color.Unspecified,
-    height: Dp = 46.dp,
+    height: Dp = 40.dp,
     fillColor: Color = Color.Unspecified
 ) {
-    val fg = if (contentColor != Color.Unspecified) contentColor else IosColors.Label
+    val scheme = MaterialTheme.colorScheme
+    val fg = if (contentColor != Color.Unspecified) contentColor else scheme.primary
     Box(
         modifier = modifier
             .clip(AppShapes.button)
-            .background(if (fillColor != Color.Unspecified) fillColor else Color(0x12FFFFFF))
-            .border(1.dp, IosColors.Line, AppShapes.button)
+            .background(if (fillColor != Color.Unspecified) fillColor else scheme.surfaceContainerLow)
+            .border(1.dp, scheme.outlineVariant, AppShapes.button)
             .bouncyClickable(onClick = onClick)
             .height(height),
         contentAlignment = Alignment.Center
@@ -638,24 +649,25 @@ fun IosDisabledButton(
     text: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    height: Dp = 46.dp
+    height: Dp = 40.dp
 ) {
+    val scheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .clip(AppShapes.button)
-            .background(Color(0x0DFFFFFF))
+            .background(scheme.surfaceContainerHighest.copy(alpha = 0.5f))
             .height(height),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                Icon(icon, contentDescription = null, tint = IosColors.TertiaryLabel, modifier = Modifier.size(17.dp))
+                Icon(icon, contentDescription = null, tint = scheme.onSurface.copy(alpha = 0.38f), modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(8.dp))
             }
             Text(
                 text = text,
                 style = IosTypography.ButtonSmall,
-                color = IosColors.TertiaryLabel
+                color = scheme.onSurface.copy(alpha = 0.38f)
             )
         }
     }
@@ -674,14 +686,14 @@ fun IosChip(
     Box(
         modifier = modifier
             .clip(AppShapes.chip)
-            .background(Color(0x0FFFFFFF))
-            .border(1.dp, IosColors.Line, AppShapes.chip)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, AppShapes.chip)
             .padding(horizontal = 11.dp, vertical = 5.dp)
     ) {
         Text(
             text = text,
             style = IosTypography.Chip,
-            color = IosColors.SecondaryLabel
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -727,7 +739,7 @@ fun IosStatusBadge(
         IosBadgeTone.ERROR -> IosColors.SystemRed
         IosBadgeTone.INFO -> IosColors.SystemBlue
     }
-    val bg = if (resolved == IosBadgeTone.NEUTRAL) Color(0x14FFFFFF) else fg.copy(alpha = 0.15f)
+    val bg = if (resolved == IosBadgeTone.NEUTRAL) MaterialTheme.colorScheme.surfaceContainerHighest else fg.copy(alpha = 0.15f)
     val dot = if (resolved == IosBadgeTone.NEUTRAL) IosColors.TertiaryLabel else fg
 
     Row(
@@ -794,30 +806,22 @@ fun IosAlertBanner(
             .fillMaxWidth()
             .padding(horizontal = AppSpacing.pageH)
             .clip(AppShapes.card)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        IosColors.SystemOrange.copy(alpha = 0.18f),
-                        IosColors.SystemOrange.copy(alpha = 0.07f)
-                    )
-                )
-            )
-            .border(1.dp, IosColors.SystemOrange.copy(alpha = 0.28f), AppShapes.card)
+            .background(MaterialTheme.colorScheme.errorContainer)
             .padding(horizontal = 16.dp, vertical = 15.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(36.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(IosColors.SystemOrange.copy(alpha = 0.20f)),
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.20f)),
             contentAlignment = Alignment.Center
         ) {
             if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = IosColors.SystemOrange,
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -826,13 +830,13 @@ fun IosAlertBanner(
             Text(
                 text = title,
                 style = IosTypography.RowTitle,
-                color = Color(0xFFFFD08A)
+                color = MaterialTheme.colorScheme.onErrorContainer
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = subtitle,
                 style = IosTypography.RowSub,
-                color = Color(0xC7FFDCAA)
+                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
             )
             if (actionText != null && onAction != null) {
                 Spacer(Modifier.height(10.dp))
@@ -846,13 +850,13 @@ fun IosAlertBanner(
                         text = actionText,
                         style = IosTypography.ButtonSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFD08A)
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Spacer(Modifier.width(5.dp))
                     Icon(
                         Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = Color(0xFFFFD08A),
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(13.dp)
                     )
                 }
@@ -973,8 +977,9 @@ fun IosSearchField(
     style: IosSearchFieldStyle = IosSearchFieldStyle.STANDARD
 ) {
     var focused by remember { mutableStateOf(false) }
-    val bg = if (focused) Color(0x17FFFFFF) else Color(0x0FFFFFFF)
-    val borderColor = if (focused) IosColors.SystemBlue.copy(alpha = 0.4f) else Color(0x0FFFFFFF)
+    val scheme = MaterialTheme.colorScheme
+    val bg = scheme.surfaceContainerHighest
+    val borderColor = if (focused) scheme.primary else scheme.outlineVariant
 
     val resolvedHeight = height ?: style.height
     val resolvedCorner = cornerRadius ?: style.cornerRadius
@@ -1124,20 +1129,17 @@ fun IosModePill(
     icon: ImageVector? = null,
     solid: Boolean = true
 ) {
-    val bg = if (solid) IosColors.SystemBlue else Color(0x12FFFFFF)
-    val fg = if (solid) Color.White else IosColors.Label
+    val scheme = MaterialTheme.colorScheme
+    val bg = if (solid) scheme.primary else scheme.surfaceContainerHigh
+    val fg = if (solid) scheme.onPrimary else scheme.onSurface
 
     Row(
         modifier = modifier
             .height(48.dp)
             .clip(AppShapes.pill)
             .then(
-                if (solid) Modifier.shadow(
-                    elevation = 12.dp,
-                    shape = AppShapes.pill,
-                    spotColor = IosColors.SystemBlue.copy(alpha = 0.9f),
-                    ambientColor = Color.Transparent
-                ) else Modifier.border(1.dp, IosColors.Line, AppShapes.pill)
+                if (!solid) Modifier.border(1.dp, scheme.outlineVariant, AppShapes.pill)
+                else Modifier
             )
             .background(bg)
             .bouncyClickable(onClick = onClick)
