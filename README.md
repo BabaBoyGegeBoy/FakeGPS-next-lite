@@ -1,11 +1,13 @@
-# FakeGPS-next
+# FakeGPS-next-lite
 
-> 面向 Android 的虚拟定位与道路巡航仿真工具。界面遵循 Apple Human Interface Guidelines，支持系统框架级 Hook 注入、多应用独立分流、离线运动学仿真与多星座 GNSS 星历合成。
+> 面向 Android 的虚拟定位与道路巡航仿真工具，基于 [FakeGPS-next](https://github.com/Elysia-SHY/FakeGPS-next) 精简而来。界面采用 Material 3 设计系统，支持系统框架级 Hook 注入、多应用独立分流、离线运动学仿真与多星座 GNSS 星历合成。
+>
+> 精简范围：移除在线更新、关于页、免责声明门禁与 OSM 国际地图图层；保留路线巡航、多应用分流、指纹伪装 / GNSS 合成、悬浮摇杆与高德地图坐标转换。
 
-[![Latest Release](https://img.shields.io/github/v/release/Elysia-SHY/FakeGPS-next?color=007AFF&label=Latest%20Release&style=flat-square)](https://github.com/Elysia-SHY/FakeGPS-next/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/BabaBoyGegeBoy/FakeGPS-next-lite?color=6750A4&label=Latest%20Release&style=flat-square)](https://github.com/BabaBoyGegeBoy/FakeGPS-next-lite/releases/latest)
 [![Android](https://img.shields.io/badge/Android-10%2B_(API_29%2B)-34C759.svg?style=flat-square)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-AF52DE.svg?style=flat-square)](https://kotlinlang.org)
-[![UI](https://img.shields.io/badge/UI-Jetpack_Compose_%C2%B7_Apple_HIG-FF9500.svg?style=flat-square)](https://developer.apple.com/design/human-interface-guidelines/)
+[![UI](https://img.shields.io/badge/UI-Jetpack_Compose_%C2%B7_Material_3-6750A4.svg?style=flat-square)](https://m3.material.io/)
 [![Injection](https://img.shields.io/badge/Injection-Root_%2F_No--Root-30B0C7.svg?style=flat-square)](#注入模式-injection-modes)
 [![LSPosed](https://img.shields.io/badge/Hook-LSPosed_System_Server-FF3B30.svg?style=flat-square)](https://github.com/LSPosed/LSPosed)
 [![License](https://img.shields.io/badge/License-Apache_2.0-5856D6.svg?style=flat-square)](LICENSE)
@@ -14,9 +16,9 @@
 >
 > 版本号以 [`app/build.gradle.kts`](app/build.gradle.kts) 的 `versionName` / `versionCode` 为准，`version.json`、`package.json`、本文档与 [CHANGELOG.md](CHANGELOG.md) 与其保持一致。
 
-**下载入口**：[GitHub Releases](https://github.com/Elysia-SHY/FakeGPS-next/releases/latest) —— 获取最新正式版安装包。
+**下载入口**：[GitHub Releases](https://github.com/BabaBoyGegeBoy/FakeGPS-next-lite/releases/latest) —— 获取最新正式版安装包。
 
-> 应用内更新以 GitHub Releases 为唯一分发源：`version.json` 静态清单与 GitHub Releases API 互为备份，下载完成后校验 SHA-256 与 APK 签名证书。
+> 精简版不内置应用内更新检查，新版本请到上方 Releases 页面手动下载安装。Release 资产附带 SHA-256 校验值。
 >
 > 安装包只作为 Release 资产上传，不写入仓库工作树、不进入提交历史。
 
@@ -28,7 +30,7 @@
 
 ```mermaid
 graph TD
-    subgraph Client["客户端层 feature/* · Jetpack Compose (Apple HIG)"]
+    subgraph Client["客户端层 feature/* · Jetpack Compose (Material 3)"]
         A["feature/map · feature/mock<br/>feature/route · feature/settings"] -->|StateFlow| B["ui/viewmodel<br/>SimulationViewModel / MapViewModel"]
         B -->|协程下发| C["core/location/MockLocationService"]
         B -.->|版本比对| V["core/data/VersionSyncManager"]
@@ -97,13 +99,6 @@ graph TD
 - **分层清晰**：`feature/*`（界面与交互）、`ui/*`（组件、导航、ViewModel）、`core/location`（定位与仿真）、`core/data`（持久化与版本）、`core/designsystem`（主题与控件）、`hook/*`（系统框架层）、`util/*`（通用工具）。
 - **依赖注入**：基于 Hilt 统一装配单例，`PermissionCoordinator`、`RootSuBridge`、`MockLocationEngine` 等跨页面共享。
 
-### 云端版本与更新同步
-
-- **多源容灾链路**：`version.json` 静态清单与 GitHub Releases API 互为备份，`raw.githubusercontent` 与加速镜像兜底，不受 API 每小时 60 次的限流约束。
-- **自动检测**：进入「关于」页时静默比对云端版本，可在应用内查看更新日志并跳转下载。
-
----
-
 ## 注入模式 (Injection Modes)
 
 | 项目 | 免 Root 模式 | Root 模式 |
@@ -137,7 +132,7 @@ graph TD
 
 ### 方式一：免 Root 模式
 
-1. 从 [Releases 页面](https://github.com/Elysia-SHY/FakeGPS-next/releases/latest) 下载并安装最新 APK；
+1. 从 [Releases 页面](https://github.com/BabaBoyGegeBoy/FakeGPS-next-lite/releases/latest) 下载并安装最新 APK；
 2. 打开 **【系统设置】→【开发者选项】→【选择模拟位置信息应用】**，选中 **Fake GPS**；
 3. 打开应用，在地图上长按选点或使用搜索框，点击 **「开启虚拟定位」**。
 4. 在设置页确认「Root 注入模式」处于 **关闭** 状态（此为默认以外的选项，默认开启 Root 模式）。
@@ -160,7 +155,7 @@ graph TD
 
 ## 核心交互功能 (Features)
 
-- **地图图层双引擎**：内置高德路网（含 Apple Maps 风格的深色夜间滤镜）与 OpenStreetMap 两套底图，自动完成 GCJ-02 与 WGS-84 坐标转换。
+- **高德地图图层**：内置高德路网（浅色标准、深色夜间、卫星影像），自动完成 GCJ-02 与 WGS-84 坐标转换。精简版已移除 OSM 国际地图图层。
 - **多应用分流管理**：首页以抽屉式卡片列表展示分流规则，可自由添加应用并配置专属坐标；未配置的应用跟随当前全局模拟点（不添加规则时不会单独覆盖真实定位）。
 - **全路网道路巡航**：支持驾车、骑行、步行三种路网模型，沿真实道路平滑移动，可导入 GPX 路线文件。
 - **三种运行方式**（v2.4 新增）：单程（到终点自动停）/ 折返（原路返回，循环往复）/ 环形（首尾相连绕圈）。入口在地图页「路线」标签的 **参数设置** 对话框；路线库「更多」菜单也能改，切换后随路线保存。
@@ -168,7 +163,6 @@ graph TD
 - **轨迹录制**（v2.4 新增，真实路线采集）：**入口唯一** —— 地图页「路线」标签右上角的红色圆点按钮，不需要先规划航点。点进去开始录制，手机放口袋走/跑，停止后自动存成轨迹，可收藏、可一键转为巡航路线（闭合轨迹自动设为环形）。录制期间不能同时巡航/单点/摇杆，录到的必须是真实定位。
 - **桌面悬浮摇杆**：具备阻尼回弹与航向锁定，可实时调整配速（步行 5 km/h、跑步 12 km/h、骑行 25 km/h、驾车 60 km/h，以及瞬移）。
 - **收藏与路线库**：地点收藏与航线收藏分列呈现，点按即可把地图与十字准星移到该点或载入该航线。
-- **运行诊断**：关于页可一键查看设备型号、Android API 级别、CPU 架构与模块运行状态。
 
 ---
 
@@ -183,8 +177,8 @@ graph TD
 
 ```bash
 # 1. 克隆代码仓库
-git clone https://github.com/Elysia-SHY/FakeGPS-next.git
-cd FakeGPS-next
+git clone https://github.com/BabaBoyGegeBoy/FakeGPS-next-lite.git
+cd FakeGPS-next-lite
 
 # 2. 编译 Release / Debug APK
 # Windows PowerShell:
@@ -223,7 +217,7 @@ app/src/main/java/com/mockrun/app/
 
 流水线一次完成：构建 release APK → 校验签名 → 打 tag → 创建/更新 GitHub Release，并在 Job Summary 中输出 APK 的 SHA-256 与签名证书指纹。
 
-构建产物只作为 Release 资产上传：`release.yml` 不把 APK 写入仓库工作树，也不产生携带二进制的提交。应用内更新统一走 Release 资产地址（`releases/download/{tag}/{file}.apk`）及其加速镜像。
+构建产物只作为 Release 资产上传：`release.yml` 不把 APK 写入仓库工作树，也不产生携带二进制的提交。用户从 Release 资产地址（`releases/download/{tag}/{file}.apk`）手动下载安装。
 
 签名密钥的解析顺序：
 
